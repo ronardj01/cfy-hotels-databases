@@ -12,13 +12,14 @@ const newHotel = 'insert into hotels (name, rooms, postcode) values ($1, $2, $3)
 const retrieveHotelName = 'select * from hotels h where name = $1';
 const retrieveCustomer = 'select * from customers c where name = $1';
 const newCustomer = 'insert into customers (name, email, address, city, postcode, country) values ($1, $2, $3, $4, $5, $6)';
+const orderedCustomers = 'select * from customers c order by name';
 
 //connection settings
 const pool = new Pool({
   user: process.env.DB_USER,
   host: process.env.DB_HOST,
   database: process.env.DB_DATABASE,
-  password: process.env.DB_PASSWORD,  
+  password: process.env.DB_PASSWORD,
   port: process.env.DB_PORT
 });
 
@@ -28,16 +29,16 @@ app.get('/hotels/:hotelID', function (req, res) {
 
   const invalidHotelID = !Number.isInteger(hotelID) || hotelID <= 0;
 
-  if(invalidHotelID) {
+  if (invalidHotelID) {
     return res.send('HotelId must be a number larger than 0');
   }
 
   pool.query(retrieveHotelID, [hotelID], (err, result) => {
-    if(err) {
+    if (err) {
       return console.error('Error executing query', err.stack)
     }
     return res.json(result.rows);
-  }) 
+  })
 });
 
 app.get('/hotels', function (req, res) {
@@ -47,6 +48,17 @@ app.get('/hotels', function (req, res) {
     }
     return res.json(result.rows)
   })
+});
+
+app.get('/customers', function (req, res) {
+  !(async function () {
+    try {
+      const result = await pool.query(orderedCustomers);
+      return res.json(result.rows)
+    } catch (error) {
+      console.error(error)
+    }
+  })();
 });
 
 app.post('/hotels', function (req, res) {
@@ -78,15 +90,15 @@ app.post('/hotels', function (req, res) {
 });
 
 app.post('/customers', function (req, res) {
-  const {name, email, address, city, postcode, country} = req.body;
+  const { name, email, address, city, postcode, country } = req.body;
   const values = [name, email, address, city, postcode, country];
 
   !(async function () {
-    try{
+    try {
       const client = await pool.connect();
       let result = await client.query(retrieveCustomer, [name]);
 
-      if(result.rowCount > 0) {
+      if (result.rowCount > 0) {
         client.release();
         return res.status(400).send('A customer with the same name already exists!');
       } else {
@@ -95,12 +107,11 @@ app.post('/customers', function (req, res) {
         return res.send('Customer Created!')
       }
 
-    } catch(error) {
+    } catch (error) {
       console.error(error)
     }
   })();
 });
-
 
 app.listen(3000, function () {
   console.log('Server is listening on port 3000')
