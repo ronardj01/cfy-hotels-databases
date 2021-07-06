@@ -1,11 +1,13 @@
 const express = require('express');
 const app = express();
 const { Pool } = require('pg');
+require('dotenv').config();
 
 app.use(express.json());
 
 //queries
 const allHotels = 'select * from hotels h';
+const retrieveHotelID = 'select * from hotels h where id = $1';
 const newHotel = 'insert into hotels (name, rooms, postcode) values ($1, $2, $3)';
 const retrieveHotelName = 'select * from hotels h where name = $1';
 const retrieveCustomer = 'select * from customers c where name = $1';
@@ -13,14 +15,31 @@ const newCustomer = 'insert into customers (name, email, address, city, postcode
 
 //connection settings
 const pool = new Pool({
-  user: 'migracode',
-  host: 'localhost',
-  database: 'cyf_hotels',
-  password: '',
-  port: 5432
+  user: process.env.DB_USER,
+  host: process.env.DB_HOST,
+  database: process.env.DB_DATABASE,
+  password: process.env.DB_PASSWORD,  
+  port: process.env.DB_PORT
 });
 
 //endpoints
+app.get('/hotels/:hotelID', function (req, res) {
+  const hotelID = parseInt(req.params.hotelID);
+
+  const invalidHotelID = !Number.isInteger(hotelID) || hotelID <= 0;
+
+  if(invalidHotelID) {
+    return res.send('HotelId must be a number larger than 0');
+  }
+
+  pool.query(retrieveHotelID, [hotelID], (err, result) => {
+    if(err) {
+      return console.error('Error executing query', err.stack)
+    }
+    return res.json(result.rows);
+  }) 
+});
+
 app.get('/hotels', function (req, res) {
   pool.query(allHotels, (err, result) => {
     if (err) {
@@ -79,8 +98,9 @@ app.post('/customers', function (req, res) {
     } catch(error) {
       console.error(error)
     }
-  })()
-})
+  })();
+});
+
 
 app.listen(3000, function () {
   console.log('Server is listening on port 3000')
