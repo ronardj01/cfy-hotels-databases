@@ -13,6 +13,7 @@ const retrieveHotelName = 'select * from hotels h where name = $1';
 const retrieveCustomer = 'select * from customers c where name = $1';
 const newCustomer = 'insert into customers (name, email, address, city, postcode, country) values ($1, $2, $3, $4, $5, $6)';
 const orderedCustomers = 'select * from customers c order by name';
+const retrieveCustomerID = 'select * from customers c where id = $1';
 
 //connection settings
 const pool = new Pool({
@@ -50,10 +51,28 @@ app.get('/hotels', function (req, res) {
   })
 });
 
-app.get('/customers', function (req, res) {
+app.get('/customers/:customerID', function (req, res) {
+  const customerId = parseInt(req.params.customerID);
+
+  const invalidCustomerID = !Number.isInteger(customerId) || customerId <= 0;
+  if (invalidCustomerID) {
+    return res.status(400).send('CustomerID should be a positive integer')
+  }
   !(async function () {
     try {
-      const result = await pool.query(orderedCustomers);
+      const result = await pool.query(retrieveCustomerID, [customerId]);
+      return res.json(result.rows);
+    } catch (error) {
+      console.error(error)
+    }
+  })();
+});
+
+app.get('/customers', function (req, res) {
+
+  !(async function () {
+    try {
+      const result = await pool.query(orderedCustomers, []);
       return res.json(result.rows)
     } catch (error) {
       console.error(error)
