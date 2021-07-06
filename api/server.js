@@ -7,7 +7,9 @@ app.use(express.json());
 //queries
 const allHotels = 'select * from hotels h';
 const newHotel = 'insert into hotels (name, rooms, postcode) values ($1, $2, $3)';
-const retrieveHotelName = 'select * from hotels h where name = $1'
+const retrieveHotelName = 'select * from hotels h where name = $1';
+const retrieveCustomer = 'select * from customers c where name = $1';
+const newCustomer = 'insert into customers (name, email, address, city, postcode, country) values ($1, $2, $3, $4, $5, $6)';
 
 //connection settings
 const pool = new Pool({
@@ -53,9 +55,32 @@ app.post('/hotels', function (req, res) {
     } catch (error) {
       console.error(error)
     }
-    
   })();
 });
+
+app.post('/customers', function (req, res) {
+  const {name, email, address, city, postcode, country} = req.body;
+  const values = [name, email, address, city, postcode, country];
+
+  !(async function () {
+    try{
+      const client = await pool.connect();
+      let result = await client.query(retrieveCustomer, [name]);
+
+      if(result.rowCount > 0) {
+        client.release();
+        return res.status(400).send('A customer with the same name already exists!');
+      } else {
+        result = await client.query(newCustomer, values);
+        client.release();
+        return res.send('Customer Created!')
+      }
+
+    } catch(error) {
+      console.error(error)
+    }
+  })()
+})
 
 app.listen(3000, function () {
   console.log('Server is listening on port 3000')
